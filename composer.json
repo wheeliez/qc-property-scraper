@@ -1,0 +1,6 @@
+{
+    "require": {
+        "fabpot/goutte": "^3.2",
+        "mongodb/mongodb": "^1.2"
+    }
+}
