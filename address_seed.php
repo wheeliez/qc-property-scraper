@@ -5,18 +5,12 @@ require_once('address_save.php');
 
 use Goutte\Client;
 
-define("X_INCREMENT", 200);
-define("Y_INCREMENT", 400);
-// define("X_START", 220000);
-// define("Y_START", 5175400);
-// define("X_END", 255400);
-// define("Y_END", 5204800);
-
-define("X_START", 243275);
-define("Y_START", 5182798);
-define("X_END", 243315);
-define("Y_END", 5182838);
-
+define("X_START", 220000);
+define("Y_START", 5175400);
+define("X_END", 255400);
+define("Y_END", 5204800);
+define("X_INCREMENT", 50);
+define("Y_INCREMENT", 100);
 
 $xmin = X_START;
 $xmax = X_START + X_INCREMENT;
@@ -31,12 +25,10 @@ while ($xmin < X_END) {
 
 		if (!empty($results)) {
 
+			print "found ". count($results) ." properties for (".$xmin.", ".$ymin.") (".$xmax.", ".$ymax.")\n";
+
 			saveAddress($results);
 
-			// #############################################
-			// TO FETCH ONLY THE FIRST PROPRTY
-			exit;
-			// #############################################
 		}
 		else {
 			print "no results found for (". $xmin . ", " . $ymin . ") (" . $xmax . ", " .  $ymax . ")\n";
