@@ -1,8 +1,6 @@
 <?php
 
-require 'vendor/autoload.php';
-
-use MongoDB\Client;
+require_once('vendor/autoload.php');
 
 
 /**
@@ -10,10 +8,9 @@ use MongoDB\Client;
  *
  * @param $addressInfo array containing multiple properties
  */
-function saveAddress($addressInfo) {
+function saveAddress($addressInfo, $mongoClient, $dryrun) {
 
-	$client = new Client("mongodb://localhost:27017");
-	$collection = $client->property_scraper->addresses_extract;
+	$collection = $mongoClient->property_scraper->addresses_extract;
 
 	foreach ($addressInfo as $v) {
 
@@ -27,7 +24,27 @@ function saveAddress($addressInfo) {
 			"date_modified"		=> null,
 		);
 
-		$result = $collection->insertOne($data);
+		// insted of inserting, to prevent duplicate, we upsert. Udpate || insert with the eval_url key
+		$filter = ["eval_url" => $v["attributes"]["URL_FICHE"]];
+		$options = ["upsert" => true];
+
+		if (!$dryrun) {
+			$result = $collection->replaceOne($filter, $data, $options);
+
+			if ($result->getUpsertedCount() > 0) {
+				print "inserted : " . $data["address"] . "\n";
+			}
+			else if ($result->getModifiedCount() > 0) {
+				print "updated : " . $data["address"] . "\n";
+			}
+			else {
+				print "nothing happened... ¯\_(ツ)_/¯ \n";
+				var_dump($result);
+				var_dump($data);
+
+				exit(1);
+			}
+		}
 	}
 }
 

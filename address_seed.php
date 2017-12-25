@@ -3,35 +3,36 @@
 require_once('vendor/autoload.php');
 require_once('address_save.php');
 
-use Goutte\Client;
+use MongoDB\Client;
 
 define("X_START", 220000);
 define("Y_START", 5175400);
 define("X_END", 255400);
 define("Y_END", 5204800);
-define("X_INCREMENT", 50);
-define("Y_INCREMENT", 100);
+define("X_INCREMENT", 200);
+define("Y_INCREMENT", 200);
 
 $xmin = X_START;
 $xmax = X_START + X_INCREMENT;
 $ymin = Y_START;
 $ymax = Y_START + Y_INCREMENT;
+$dryrun = false;
+
+parse_argvs($xmin, $ymin, $xmax, $ymax, $dryrun);
+
+$mongoClient = new Client("mongodb://localhost:27017");
 
 while ($xmin < X_END) {
 	while ($ymin < Y_END) {
+
 		$url = build_url($xmin, $ymin, $xmax, $ymax);
 
 		$results = fetch_data($url);
 
+		print "found ". count($results) ." results\n";
+
 		if (!empty($results)) {
-
-			print "found ". count($results) ." properties for (".$xmin.", ".$ymin.") (".$xmax.", ".$ymax.")\n";
-
-			saveAddress($results);
-
-		}
-		else {
-			print "no results found for (". $xmin . ", " . $ymin . ") (" . $xmax . ", " .  $ymax . ")\n";
+			saveAddress($results, $mongoClient, $dryrun);
 		}
 
 		$ymin = $ymax;
@@ -89,6 +90,49 @@ function fetch_data($url) {
 	}
 	else {
 		return array();
+	}
+}
+
+/**
+  * parse params passed to the function's arguments
+  * @param string $xmin coordinate
+  * @param string $ymin coordinate
+  * @param string $xmax coordinate
+  * @param string $ymax coordinate
+  * @param string $dryrun fetch without saving to database
+  *
+  */
+function parse_argvs(&$xmin, &$ymin, &$xmax, &$ymax, &$dryrun) {
+
+	$longOptions = [
+		"help",
+		"dryrun",
+		"xmin:",
+		"xmax:",
+		"ymin:",
+		"ymax:",
+	];
+
+	$options = getopt("", $longOptions);
+
+	if (array_key_exists("help", $options)) {
+		foreach ($longOptions as $o) {
+			print $o . "\n";
+		}
+	}
+
+	if (array_key_exists("xmin", $options)
+			&& array_key_exists("xmax", $options)
+			&& array_key_exists("ymin", $options)
+			&& array_key_exists("ymax", $options)) {
+		$xmin = $options["xmin"];
+		$xmax = $options["xmax"];
+		$ymin = $options["ymin"];
+		$ymax = $options["ymax"];
+	}
+
+	if (array_key_exists("dryrun", $options)) {
+		$dryrun = true;
 	}
 }
 
