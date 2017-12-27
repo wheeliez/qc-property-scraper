@@ -3,43 +3,48 @@
 require_once('vendor/autoload.php');
 require_once('property_save.php');
 
-use Goutte\Client;
+use Goutte\Client as CrawlerClient;
+use MongoDB\Client as MongoClient;
 use Symfony\Component\DomCrawler\Crawler as Crawler;
 
 
-/******************************************************
- *
- * Téléchargement des données d'évaluation foncière
- *
- * Requiert l'adresse de la fiche de la propriété
- * comme premier parametre du script
- *
- ******************************************************/
+getPropertiesAndParseResults(new CrawlerClient(), new MongoClient("mongodb://localhost:27017"));
 
+function getPropertiesAndParseResults(CrawlerClient $crawlerClient, MongoClient $mongoClient) {
 
-if (count($argv) > 1) {
-	$url = $argv[1];
-	$client = new Client();
-	$crawler = $client->request('GET', $url);
+	$alreadyParsedProperties = $mongoClient->property_scraper->properties->distinct("eval_url");
 
-	$nbrProperties = numberPropertiesInLink($crawler);
+	$cursor = $mongoClient->property_scraper->addresses_extract->find();
+	$it = new IteratorIterator($cursor);
+	$it->rewind();
 
-	if ($nbrProperties > 1) {
-		$propertiesData = extractMultiplePropertiesData($crawler, $client, $url);
+	while($doc = $it->current()) {
+	    $evaluationURL = $doc["eval_url"];
+		
+		if (!in_array($evaluationURL, $alreadyParsedProperties)) {
 
-		foreach ($propertiesData as $propertyData) {
-			saveProperty($propertyData);
+			$crawler = $crawlerClient->request('GET', $evaluationURL);
+
+			$nbrProperties = numberPropertiesInLink($crawler);
+
+			if ($nbrProperties > 1) {
+				$propertiesData = extractMultiplePropertiesData($crawler, $crawlerClient, $evaluationURL);
+
+				foreach ($propertiesData as $propertyData) {
+					saveProperty($propertyData, $evaluationURL, $mongoClient);
+				}
+
+			}
+			else {
+				$propertyData = extractData($crawler);
+				saveProperty($propertyData, $evaluationURL, $mongoClient);
+			}
 		}
 
-	}
-	else {
-		$propertyData = extractData($crawler);
-		saveProperty($propertyData);
+		$it->next();
 	}
 }
-else {
-	print "url parameter missing\n";
-}
+
 
 
 /**
@@ -50,7 +55,7 @@ else {
  *
  * @return Array of properties data
  */
-function extractMultiplePropertiesData(Crawler $propertiesCrawler, Client $client, $url) {
+function extractMultiplePropertiesData(Crawler $propertiesCrawler, CrawlerClient $client, $url) {
 	$propertiesInLot = array();
 	$propertiesExtractedData = array();
 

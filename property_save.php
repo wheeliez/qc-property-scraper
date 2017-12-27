@@ -10,13 +10,13 @@ use MongoDB\Client;
  *
  * @param $addressInfo array containing a single property
  */
-function saveProperty($propertyInfo) {
+function saveProperty($propertyInfo, $url, $mongoClient) {
 
-	$client = new Client("mongodb://localhost:27017");
-	$collection = $client->property_scraper->properties;
+	$collection = $mongoClient->property_scraper->properties;
 
 	$propertyInfo["date_added"] = date('Y-m-d H:i:s');
 	$propertyInfo["date_modified"] = null;
+	$propertyInfo["eval_url"] = $url;
 
 	$result = $collection->insertOne($propertyInfo);
 
