@@ -20,11 +20,15 @@ function saveProperty($propertyInfo, $url, $mongoClient) {
 
 	$result = $collection->insertOne($propertyInfo);
 
+	$a = isset($propertyInfo["property_identification"]["property_address"]) ? $propertyInfo["property_identification"]["property_address"] : "";
+	$n = isset($propertyInfo["property_identification"]["neighborhood"]) ? $propertyInfo["property_identification"]["neighborhood"] : "";
+	$address = $a . ", " . $n;
+
 	if ($result) {
-		print "property saved : " . $propertyInfo["property_identification"]["property_address"] . ", " . $propertyInfo["property_identification"]["neighborhood"] . "\n";
+		print "property saved : " . $address . "\n";
 	}
 	else {
-		print "property save failed : " . $propertyInfo["property_identification"]["property_address"] . ", " . $propertyInfo["property_identification"]["neighborhood"] . "\n";
+		print "property save failed : " . $address . "\n";
 	}
 }
 

@@ -14,31 +14,28 @@ function getPropertiesAndParseResults(CrawlerClient $crawlerClient, MongoClient 
 
 	$alreadyParsedProperties = $mongoClient->property_scraper->properties->distinct("eval_url");
 
-	$cursor = $mongoClient->property_scraper->addresses_extract->find();
+	$cursor = $mongoClient->property_scraper->addresses_extract->find([ "eval_url" => [ '$nin' => $alreadyParsedProperties ] ], [ 'noCursorTimeout' => true ]);
 	$it = new IteratorIterator($cursor);
 	$it->rewind();
 
 	while($doc = $it->current()) {
 	    $evaluationURL = $doc["eval_url"];
-		
-		if (!in_array($evaluationURL, $alreadyParsedProperties)) {
 
-			$crawler = $crawlerClient->request('GET', $evaluationURL);
+		$crawler = $crawlerClient->request('GET', $evaluationURL);
 
-			$nbrProperties = numberPropertiesInLink($crawler);
+		$nbrProperties = numberPropertiesInLink($crawler);
 
-			if ($nbrProperties > 1) {
-				$propertiesData = extractMultiplePropertiesData($crawler, $crawlerClient, $evaluationURL);
+		if ($nbrProperties > 1) {
+			$propertiesData = extractMultiplePropertiesData($crawler, $crawlerClient, $evaluationURL);
 
-				foreach ($propertiesData as $propertyData) {
-					saveProperty($propertyData, $evaluationURL, $mongoClient);
-				}
-
-			}
-			else {
-				$propertyData = extractData($crawler);
+			foreach ($propertiesData as $propertyData) {
 				saveProperty($propertyData, $evaluationURL, $mongoClient);
 			}
+
+		}
+		else {
+			$propertyData = extractData($crawler);
+			saveProperty($propertyData, $evaluationURL, $mongoClient);
 		}
 
 		$it->next();
@@ -120,10 +117,13 @@ function extractData(Crawler $crawler) {
 			}
 			$value = implode(", ", $explodedAddressArray);
 
-			$person = end($owners["owners"]);
-			array_pop($owners["owners"]);
-			$person[$key] = $value;
-			$owners["owners"][] = $person;
+			if (!is_null($owners["owners"])) {
+				$person = end($owners["owners"]);
+				array_pop($owners["owners"]);
+				$person[$key] = $value;
+				$owners["owners"][] = $person;
+			}
+
 		}
 		else if ($key) {
 			$owners[$key] = $value;
